@@ -34,7 +34,7 @@ jobs:
 
       - name: Helm upgrade
         run: |
-          helm upgrade --install url-shortener ./helm \
+          helm upgrade --install url-shortener ./deploy/helm \
             -n url-shortener \
             --create-namespace
 

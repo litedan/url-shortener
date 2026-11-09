@@ -101,4 +101,4 @@ jobs:
 
       - name: Helm lint
         run: |
-          helm lint ./helm
+          helm lint ./deploy/helm
