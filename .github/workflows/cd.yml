@@ -1,0 +1,72 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check tools
+        run: |
+          docker --version
+          kind version
+          kubectl version --client
+          helm version
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t url-service:local \
+            -f services/url-service/Dockerfile \
+            .
+
+      - name: Load image into kind
+        run: |
+          kind load docker-image url-service:local \
+            --name devops-lab
+
+      - name: Helm upgrade
+        run: |
+          helm upgrade --install url-shortener ./helm \
+            -n url-shortener \
+            --create-namespace
+
+      - name: Restart application
+        run: |
+          kubectl rollout restart \
+            deployment/url-shortener-url-service \
+            -n url-shortener
+
+      - name: Wait for deployment
+        run: |
+          kubectl rollout status \
+            deployment/url-shortener-url-service \
+            -n url-shortener \
+            --timeout=120s
+
+      - name: Check pods
+        run: |
+          kubectl get pods -n url-shortener
+
+      - name: Health check
+        run: |
+          kubectl port-forward \
+            -n url-shortener \
+            svc/url-shortener-url-service \
+            5001:5000 > /tmp/url-shortener-port-forward.log 2>&1 &
+
+          PF_PID=$!
+
+          trap "kill $PF_PID" EXIT
+
+          sleep 5
+
+          curl --fail \
+            http://localhost:5001/health
