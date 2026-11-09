@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-postgres-init
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 5
+
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-postgres-init
+    spec:
+      restartPolicy: OnFailure
+
+      containers:
+        - name: postgres-init
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+
+          env:
+            - name: PGHOST
+              value: {{ printf "%s-postgres" .Release.Name | quote }}
+
+            - name: PGPORT
+              value: {{ .Values.postgres.service.port | quote }}
+
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-postgres-secret
+                  key: POSTGRES_DB
+
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-postgres-secret
+                  key: POSTGRES_USER
+
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-postgres-secret
+                  key: POSTGRES_PASSWORD
+
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until pg_isready; do
+                echo "Waiting for PostgreSQL..."
+                sleep 2
+              done
+
+              echo "PostgreSQL is ready"
+
+              psql -v ON_ERROR_STOP=1 <<'SQL'
+              CREATE TABLE IF NOT EXISTS urls (
+                  id SERIAL PRIMARY KEY,
+                  code VARCHAR(20) UNIQUE NOT NULL,
+                  original_url TEXT NOT NULL
+              );
+              SQL
+
+              echo "Database initialization completed"

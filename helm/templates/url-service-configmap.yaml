@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-url-service-config
+  namespace: {{ .Release.Namespace }}
+data:
+  DATABASE_HOST: {{ printf "%s-postgres" .Release.Name | quote }}
+  DATABASE_PORT: {{ .Values.postgres.service.port | quote }}
+  DATABASE_NAME: {{ .Values.postgres.database.name | quote }}

@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: url-postgres
+    environment:
+      POSTGRES_DB: urlshortener
+      POSTGRES_USER: urluser
+      POSTGRES_PASSWORD: urlpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U urluser -d urlshortener"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  url-service:
+    build:
+      context: .
+      dockerfile: services/url-service/Dockerfile
+    container_name: url-service
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: urlshortener
+      DATABASE_USER: urluser
+      DATABASE_PASSWORD: urlpassword
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

@@ -1,0 +1,36 @@
+urlService:
+  replicaCount: 2
+
+  image:
+    repository: url-service
+    tag: local
+    pullPolicy: Never
+
+  service:
+    type: NodePort
+    port: 5000
+    targetPort: 5000
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+
+postgres:
+  image:
+    repository: postgres
+    tag: "16"
+
+  service:
+    port: 5432
+
+  storage:
+    size: 1Gi
+
+  database:
+    name: urlshortener
+    user: urluser
+    password: urlpassword

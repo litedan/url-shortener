@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-url-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.urlService.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-url-service
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-url-service
+    spec:
+      containers:
+        - name: url-service
+          image: "{{ .Values.urlService.image.repository }}:{{ .Values.urlService.image.tag }}"
+          imagePullPolicy: {{ .Values.urlService.image.pullPolicy }}
+          ports:
+            - containerPort: 5000
+
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-url-service-config
+            - secretRef:
+                name: {{ .Release.Name }}-url-service-secret
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+          resources:
+{{ toYaml .Values.urlService.resources | nindent 12 }}
