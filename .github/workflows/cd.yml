@@ -9,6 +9,9 @@ jobs:
   deploy:
     runs-on: self-hosted
 
+    env:
+      IMAGE_TAG: ${{ github.sha }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,26 +26,21 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
-            -t url-service:local \
+            -t url-service:${IMAGE_TAG} \
             -f services/url-service/Dockerfile \
             .
 
       - name: Load image into kind
         run: |
-          kind load docker-image url-service:local \
+          kind load docker-image url-service:${IMAGE_TAG} \
             --name devops-lab
 
       - name: Helm upgrade
         run: |
           helm upgrade --install url-shortener ./deploy/helm \
             -n url-shortener \
-            --create-namespace
-
-      - name: Restart application
-        run: |
-          kubectl rollout restart \
-            deployment/url-shortener-url-service \
-            -n url-shortener
+            --create-namespace \
+            --set urlService.image.tag=${IMAGE_TAG}
 
       - name: Wait for deployment
         run: |
@@ -54,6 +52,12 @@ jobs:
       - name: Check pods
         run: |
           kubectl get pods -n url-shortener
+
+      - name: Check deployed image
+        run: |
+          kubectl get deployment url-shortener-url-service \
+            -n url-shortener \
+            -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
 
       - name: Health check
         run: |
